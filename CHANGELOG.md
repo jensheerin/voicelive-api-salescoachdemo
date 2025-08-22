@@ -1,13 +1,13 @@
-## [project-title] Changelog
+## [voicelive-api-salescoach] Changelog
 
-<a name="x.y.z"></a>
-# x.y.z (yyyy-mm-dd)
+<a name="0.1.0"></a>
+# 0.1.0 (2024-08-22)
 
 *Features*
-* ...
+* Initial release
 
 *Bug Fixes*
-* ...
+* N/A
 
 *Breaking Changes*
-* ...
+* N/A
