@@ -177,4 +177,4 @@ This is a demo application showcasing Azure AI capabilities. Feel free to fork a
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) file for details
+MIT License - See [LICENSE.md](LICENSE.md) file for details
