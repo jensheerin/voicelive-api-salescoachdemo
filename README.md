@@ -1,3 +1,21 @@
+<!--
+---
+name: Voice Live API Salescoach (Python + React)
+description: A demo application showcasing AI-powered voice training for sales professionals using Azure Voice Live API and Azure AI services.
+languages:
+- python
+- typescript
+- bicep
+- azdeveloper
+products:
+- azure-openai
+- azure-ai-foundry
+- azure-speech
+- azure
+page_type: sample
+urlFragment: voicelive-api-salescoach
+---
+-->
 <p align="center">
    <h1 align="center">Voice Live API: AI Salescoach</h1>
 </p>
