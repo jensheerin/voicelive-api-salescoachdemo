@@ -64,11 +64,15 @@ export default function App() {
   const [showAssessment, setShowAssessment] = useState(false)
   const [currentAgent, setCurrentAgent] = useState<string | null>(null)
   const [assessment, setAssessment] = useState<Assessment | null>(null)
+  const [selectedScenarioData, setSelectedScenarioData] = useState<any>(null)
 
   const { scenarios, selectedScenario, setSelectedScenario, loading } =
     useScenarios()
   const { playAudio } = useAudioPlayer()
-  const activeScenario = scenarios.find(s => s.id === selectedScenario) || null
+  const activeScenario =
+    selectedScenarioData ||
+    scenarios.find(s => s.id === selectedScenario) ||
+    null
 
   const handleWebRTCMessage = useCallback((msg: any) => {
     if (msg.type === 'session.updated') {
@@ -168,6 +172,10 @@ export default function App() {
     }
   }
 
+  const handleScenarioGenerated = useCallback((scenario: any) => {
+    setSelectedScenarioData(scenario)
+  }, [])
+
   return (
     <div className={styles.container}>
       <Dialog
@@ -184,6 +192,7 @@ export default function App() {
                 selectedScenario={selectedScenario}
                 onSelect={setSelectedScenario}
                 onStart={handleStart}
+                onScenarioGenerated={handleScenarioGenerated}
               />
             )}
           </DialogBody>
