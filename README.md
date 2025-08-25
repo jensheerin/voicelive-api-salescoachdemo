@@ -116,6 +116,14 @@ The application leverages multiple Azure AI services to deliver real-time voice-
 </tr>
 </table>
 
+
+## Contributors
+<p float="left">
+  <a href="https://github.com/aymenfurter"><img src="https://github.com/aymenfurter.png" width="100" height="100" alt="aymenfurter" style="border-radius:50%;"/></a>
+  <a href="https://github.com/curia-damiano"><img src="https://github.com/curia-damiano.png" width="100" height="100" alt="curia-damiano" style="border-radius:50%;"/></a>
+  <a href="https://github.com/TiffanyZ4Msft"><img src="https://github.com/TiffanyZ4Msft.png" width="100" height="100" alt="TiffanyZ4Msft.png" style="border-radius:50%;"/></a>
+</p>
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a
