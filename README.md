@@ -65,16 +65,11 @@ https://github.com/user-attachments/assets/904f1555-6981-4780-ae64-c5757337bcad
 
 ### Deploy to Azure
 
-1. **Initialize Azure Developer CLI**:
-   ```bash
-   azd init
-   ```
-
-2. **Deploy to Azure**:
+1. **Deploy to Azure**:
    ```bash
    azd up
    ```
-3. **Access your application**:
+2. **Access your application**:
    The deployment will output the URL where your application is running.
 
 ### Local Development
