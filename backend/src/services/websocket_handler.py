@@ -15,8 +15,8 @@ import simple_websocket.ws  # pyright: ignore[reportMissingTypeStubs]
 import websockets
 import websockets.asyncio.client
 
-from config import config
-from services.managers import AgentManager
+from src.config import config
+from src.services.managers import AgentManager
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +70,7 @@ class VoiceProxyHandler:
 
             azure_ws = await self._connect_to_azure(current_agent_id)
             if not azure_ws:
-                await self._send_error(
-                    client_ws, "Failed to connect to Azure Voice API"
-                )
+                await self._send_error(client_ws, "Failed to connect to Azure Voice API")
                 return
 
             await self._send_message(
@@ -83,16 +81,14 @@ class VoiceProxyHandler:
             await self._handle_message_forwarding(client_ws, azure_ws)
 
         except Exception as e:
-            logger.error(f"Proxy error: {e}")
+            logger.error("Proxy error: %s", e)
             await self._send_error(client_ws, str(e))
 
         finally:
             if azure_ws:
                 await azure_ws.close()
 
-    async def _get_agent_id_from_client(
-        self, client_ws: simple_websocket.ws.Server
-    ) -> Optional[str]:
+    async def _get_agent_id_from_client(self, client_ws: simple_websocket.ws.Server) -> Optional[str]:
         """Get agent ID from initial client message."""
 
         try:
@@ -105,12 +101,10 @@ class VoiceProxyHandler:
                 if msg.get("type") == "session.update":
                     return msg.get("session", {}).get("agent_id")
         except Exception as e:
-            logger.error(f"Error getting agent ID: {e}")
+            logger.error("Error getting agent ID: %s", e)
             return None
 
-    async def _connect_to_azure(
-        self, agent_id: Optional[str]
-    ) -> Optional[websockets.asyncio.client.ClientConnection]:
+    async def _connect_to_azure(self, agent_id: Optional[str]) -> Optional[websockets.asyncio.client.ClientConnection]:
         """Connect to Azure Voice API with appropriate configuration."""
         try:
             agent_config = self.agent_manager.get_agent(agent_id) if agent_id else None
@@ -125,31 +119,26 @@ class VoiceProxyHandler:
             headers = {"api-key": api_key}
 
             azure_ws = await websockets.connect(azure_url, additional_headers=headers)
-            logger.info(
-                f"Connected to Azure Voice API with agent: {agent_id or 'default'}"
-            )
+            logger.info("Connected to Azure Voice API with agent: %s", agent_id or "default")
 
             await self._send_initial_config(azure_ws, agent_config)
 
             return azure_ws
 
         except Exception as e:
-            logger.error(f"Failed to connect to Azure: {e}")
+            logger.error("Failed to connect to Azure: %s", e)
             return None
 
-    def _build_azure_url(
-        self, agent_id: Optional[str], agent_config: Optional[Dict[str, Any]]
-    ) -> str:
+    def _build_azure_url(self, agent_id: Optional[str], agent_config: Optional[Dict[str, Any]]) -> str:
         """Build the Azure WebSocket URL."""
         base_url = self._build_base_azure_url()
 
         if agent_config:
             return self._build_agent_specific_url(base_url, agent_id, agent_config)
-        elif config["agent_id"]:
+        if config["agent_id"]:
             return f"{base_url}&agent-id={config['agent_id']}"
-        else:
-            model_name = config["model_deployment_name"]
-            return f"{base_url}&model={model_name}"
+        model_name = config["model_deployment_name"]
+        return f"{base_url}&model={model_name}"
 
     def _build_base_azure_url(self) -> str:
         """Build the base Azure WebSocket URL."""
@@ -164,15 +153,12 @@ class VoiceProxyHandler:
             f"&agent-project-name={project_name}"
         )
 
-    def _build_agent_specific_url(
-        self, base_url: str, agent_id: Optional[str], agent_config: Dict[str, Any]
-    ) -> str:
+    def _build_agent_specific_url(self, base_url: str, agent_id: Optional[str], agent_config: Dict[str, Any]) -> str:
         """Build URL for specific agent configuration."""
         if agent_config.get("is_azure_agent"):
             return f"{base_url}&agent-id={agent_id}"
-        else:
-            model_name = agent_config.get("model", config["model_deployment_name"])
-            return f"{base_url}&model={model_name}"
+        model_name = agent_config.get("model", config["model_deployment_name"])
+        return f"{base_url}&model={model_name}"
 
     async def _send_initial_config(
         self,
@@ -195,9 +181,7 @@ class VoiceProxyHandler:
                 "modalities": DEFAULT_MODALITIES,
                 "turn_detection": {"type": DEFAULT_TURN_DETECTION_TYPE},
                 "input_audio_noise_reduction": {"type": DEFAULT_NOISE_REDUCTION_TYPE},
-                "input_audio_echo_cancellation": {
-                    "type": DEFAULT_ECHO_CANCELLATION_TYPE
-                },
+                "input_audio_echo_cancellation": {"type": DEFAULT_ECHO_CANCELLATION_TYPE},
                 "avatar": {
                     "character": DEFAULT_AVATAR_CHARACTER,
                     "style": DEFAULT_AVATAR_STYLE,
@@ -205,9 +189,7 @@ class VoiceProxyHandler:
             },
         }
 
-    def _add_local_agent_config(
-        self, config_message: Dict[str, Any], agent_config: Dict[str, Any]
-    ) -> None:
+    def _add_local_agent_config(self, config_message: Dict[str, Any], agent_config: Dict[str, Any]) -> None:
         """Add local agent configuration to session config."""
         session = config_message["session"]
         session["model"] = agent_config.get("model", config["model_deployment_name"])
@@ -245,7 +227,7 @@ class VoiceProxyHandler:
                 )
                 if message is None:
                     break
-                logger.debug(f"Client->Azure: {message[:LOG_MESSAGE_MAX_LENGTH]}")
+                logger.debug("Client->Azure: %s", message[:LOG_MESSAGE_MAX_LENGTH])
                 await azure_ws.send(message)
         except Exception:
             logger.debug("Client connection closed during forwarding")
@@ -258,7 +240,7 @@ class VoiceProxyHandler:
         """Forward messages from Azure to client."""
         try:
             async for message in azure_ws:
-                logger.debug(f"Azure->Client: {message[:LOG_MESSAGE_MAX_LENGTH]}")
+                logger.debug("Azure->Client: %s", message[:LOG_MESSAGE_MAX_LENGTH])
                 await asyncio.get_event_loop().run_in_executor(
                     None,
                     client_ws.send,  # pyright: ignore[reportUnknownArgumentType,reportUnknownMemberType]
@@ -267,9 +249,7 @@ class VoiceProxyHandler:
         except Exception:
             logger.debug("Client connection closed during forwarding")
 
-    async def _send_message(
-        self, ws: simple_websocket.ws.Server, message: Dict[str, str | Dict[str, str]]
-    ) -> None:
+    async def _send_message(self, ws: simple_websocket.ws.Server, message: Dict[str, str | Dict[str, str]]) -> None:
         """Send a JSON message to a WebSocket."""
         try:
             await asyncio.get_event_loop().run_in_executor(
@@ -280,15 +260,6 @@ class VoiceProxyHandler:
         except Exception:
             pass
 
-    async def _send_error(
-        self, ws: simple_websocket.ws.Server, error_message: str
-    ) -> None:
+    async def _send_error(self, ws: simple_websocket.ws.Server, error_message: str) -> None:
         """Send an error message to a WebSocket."""
-
-        await self._send_message(
-            ws, {"type": "error", "error": {"message": error_message}}
-        )
-        """Send an error message to a WebSocket."""
-        await self._send_message(
-            ws, {"type": "error", "error": {"message": error_message}}
-        )
+        await self._send_message(ws, {"type": "error", "error": {"message": error_message}})

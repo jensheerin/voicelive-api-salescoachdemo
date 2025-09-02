@@ -6,17 +6,21 @@
 """Flask application for the upskilling agent."""
 
 import asyncio
+import json
 import logging
 import os
+import time
+from pathlib import Path
 from typing import Any, Dict, List, cast
+
+import simple_websocket.ws  # pyright: ignore[reportMissingTypeStubs]
 from flask import Flask, jsonify, request, send_from_directory
 from flask_sock import Sock  # pyright: ignore[reportMissingTypeStubs]
-import simple_websocket.ws  # pyright: ignore[reportMissingTypeStubs]
 
-from config import config
-from services.managers import ScenarioManager, AgentManager
-from services.analyzers import ConversationAnalyzer, PronunciationAssessor
-from services.websocket_handler import VoiceProxyHandler
+from src.config import config
+from src.services.analyzers import ConversationAnalyzer, PronunciationAssessor
+from src.services.managers import AgentManager, ScenarioManager
+from src.services.websocket_handler import VoiceProxyHandler
 
 # Constants
 STATIC_FOLDER = "../static"
@@ -63,7 +67,7 @@ def index():
     """Serve the main application page."""
     if app.static_folder is None:
         logger.error("STATIC_FOLDER is not set. Cannot serve index.html.")
-        import sys
+        import sys  # pylint: disable=C0415
 
         sys.exit(1)
     return send_from_directory(app.static_folder, INDEX_FILE)
@@ -102,7 +106,10 @@ def create_agent():
     scenario = scenario_manager.get_scenario(scenario_id)
     if not scenario:
         logger.error(
-            f"Scenario not found: {scenario_id}. Available scenarios: {list(scenario_manager.scenarios.keys())} + generated: {list(scenario_manager.generated_scenarios.keys())}"
+            "Scenario not found: %s. Available scenarios: %s + generated: %s",
+            scenario_id,
+            list(scenario_manager.scenarios.keys()),
+            list(scenario_manager.generated_scenarios.keys()),
         )
         return jsonify({"error": SCENARIO_NOT_FOUND}), HTTP_NOT_FOUND
 
@@ -110,7 +117,7 @@ def create_agent():
         agent_id = agent_manager.create_agent(scenario_id, scenario)
         return jsonify({"agent_id": agent_id, "scenario_id": scenario_id})
     except Exception as e:
-        logger.error(f"Failed to create agent: {e}")
+        logger.error("Failed to create agent: %s", e)
         return jsonify({"error": str(e)}), HTTP_INTERNAL_SERVER_ERROR
 
 
@@ -121,7 +128,7 @@ def delete_agent(agent_id: str):
         agent_manager.delete_agent(agent_id)
         return jsonify({"success": True})
     except Exception as e:
-        logger.error(f"Failed to delete agent: {e}")
+        logger.error("Failed to delete agent: %s", e)
         return jsonify({"error": str(e)}), HTTP_INTERNAL_SERVER_ERROR
 
 
@@ -139,17 +146,16 @@ def analyze_conversation():
     if not scenario_id or not transcript:
         return jsonify({"error": TRANSCRIPT_REQUIRED}), HTTP_BAD_REQUEST
 
-    return _perform_conversation_analysis(
-        scenario_id, transcript, audio_data, reference_text
-    )
+    return _perform_conversation_analysis(scenario_id, transcript, audio_data, reference_text)
 
 
 def _log_analyze_request(scenario_id: str, transcript: str, reference_text: str):
     """Log information about the analyze request."""
     logger.info(
-        f"Analyze request - scenario: {scenario_id}, "
-        f"transcript length: {len(transcript or '')}, "
-        f"reference_text length: {len(reference_text or '')}"
+        "Analyze request - scenario: %s, transcript length: %s, reference_text length: %s",
+        scenario_id,
+        len(transcript or ""),
+        len(reference_text or ""),
     )
 
 
@@ -169,23 +175,19 @@ def _perform_conversation_analysis(
             pronunciation_assessor.assess_pronunciation(audio_data, reference_text),
         ]
 
-        results = loop.run_until_complete(
-            asyncio.gather(*tasks, return_exceptions=True)
-        )
+        results = loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
 
         ai_assessment, pronunciation = results
 
         if isinstance(ai_assessment, Exception):
-            logger.error(f"AI assessment failed: {ai_assessment}")
+            logger.error("AI assessment failed: %s", ai_assessment)
             ai_assessment = None
 
         if isinstance(pronunciation, Exception):
-            logger.error(f"Pronunciation assessment failed: {pronunciation}")
+            logger.error("Pronunciation assessment failed: %s", pronunciation)
             pronunciation = None
 
-        return jsonify(
-            {"ai_assessment": ai_assessment, "pronunciation_assessment": pronunciation}
-        )
+        return jsonify({"ai_assessment": ai_assessment, "pronunciation_assessment": pronunciation})
 
     finally:
         loop.close()
@@ -215,35 +217,28 @@ def voice_proxy(ws: simple_websocket.ws.Server):
 @app.route(API_GRAPH_SCENARIO_ENDPOINT, methods=["POST"])
 def generate_graph_scenario():
     """Generate a scenario based on Graph API data."""
-    import time
-    import json
-    from pathlib import Path
 
     # Simulate API delay
     time.sleep(2)
 
     try:
         docker_canned_file = Path("/app/data/graph-api-canned.json")
-        dev_canned_file = (
-            Path(__file__).parent.parent.parent / "data" / "graph-api-canned.json"
-        )
+        dev_canned_file = Path(__file__).parent.parent.parent / "data" / "graph-api-canned.json"
 
-        canned_file = (
-            docker_canned_file if docker_canned_file.exists() else dev_canned_file
-        )
+        canned_file = docker_canned_file if docker_canned_file.exists() else dev_canned_file
 
         if not canned_file.exists():
-            logger.error(f"Canned Graph API file not found at {canned_file}")
+            logger.error("Canned Graph API file not found at %s", canned_file)
             graph_data: Dict[str, Any] = {"value": []}
         else:
-            with open(canned_file) as f:
+            with open(canned_file, encoding="utf-8") as f:
                 graph_data = json.load(f)
 
         scenario = scenario_manager.generate_scenario_from_graph(graph_data)
 
         return jsonify(scenario)
     except Exception as e:
-        logger.error(f"Failed to generate Graph scenario: {e}")
+        logger.error("Failed to generate Graph scenario: %s", e)
         return jsonify({"error": str(e)}), HTTP_INTERNAL_SERVER_ERROR
 
 

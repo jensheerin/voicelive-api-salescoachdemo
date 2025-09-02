@@ -2,23 +2,49 @@
     "name": "voicelive-api-salescoach",
     "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
     "features": {
-        "ghcr.io/devcontainers/features/azure-cli:1.2.7": {},
-        "ghcr.io/azure/azure-dev/azd:latest": {},
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+        "ghcr.io/devcontainers/features/azure-cli:1.2.7": { },
+        "ghcr.io/azure/azure-dev/azd:latest": { },
+        "ghcr.io/devcontainers/features/docker-in-docker:2": { }
     },
     "customizations": {
         "vscode": {
             "extensions": [
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "GitHub.vscode-github-actions",
                 "ms-azuretools.azure-dev",
                 "ms-azuretools.vscode-bicep",
+                "ms-python.black-formatter",
+                "ms-python.pylint",
                 "ms-python.python",
+                "ms-python.vscode-python-envs",
                 "ms-toolsai.jupyter",
-                "GitHub.vscode-github-actions"
+                "charliermarsh.ruff",
+                "streetsidesoftware.code-spell-checker",
+                "tamasfe.even-better-toml"
             ],
             "settings": {
-                "python.analysis.typeCheckingMode": "strict"
-            }
+                "python.analysis.extraPaths": [
+                    "${containerWorkspaceFolder}/backend"
+                ],
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/backend/.venv/bin/python",
+                "python.pythonPath": "${containerWorkspaceFolder}/backend/.venv/bin/python",
+                "python.venvPath": "${containerWorkspaceFolder}/backend/.venv",
+                "python.envFile": "${containerWorkspaceFolder}/backend/.env",
+                "terminal.integrated.profiles.linux": {
+                    "bash": {
+                        "path": "bash",
+                        "args": [ "-c", "source ${containerWorkspaceFolder}/backend/.venv/bin/activate && bash" ]
+                    }
+                }
+            },
+            "terminal.integrated.defaultProfile.linux": "bash"
         }
     },
-    "remoteUser": "vscode"
+    "containerEnv": {
+        "PYTHONPATH": "${containerWorkspaceFolder}/backend"
+    },
+
+    "remoteUser": "vscode",
+    "postCreateCommand": "chmod +x ./.devcontainer/setup.sh && ./.devcontainer/setup.sh && chmod +x ./cleanall.sh"
 }

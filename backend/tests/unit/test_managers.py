@@ -1,12 +1,13 @@
 """Tests for the managers module."""
 
 import tempfile
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
 import yaml
 
-from services.managers import ScenarioManager, AgentManager
+from src.services.managers import AgentManager, ScenarioManager
 
 
 class TestScenarioManager:
@@ -32,7 +33,7 @@ class TestScenarioManager:
             }
 
             scenario_file = scenario_dir / "test-scenario-role-play.prompt.yml"
-            with open(scenario_file, "w") as f:
+            with open(scenario_file, "w", encoding="utf-8") as f:
                 yaml.safe_dump(scenario_data, f)
 
             manager = ScenarioManager(scenario_dir=scenario_dir)
@@ -77,7 +78,7 @@ class TestAgentManager:
 
     def setup_method(self):
         """Set up test fixtures."""
-        with patch("services.managers.config") as mock_config:
+        with patch("src.services.managers.config") as mock_config:
             mock_config.__getitem__.side_effect = lambda key: {
                 "use_azure_ai_agents": False,
                 "project_endpoint": "",
@@ -88,10 +89,10 @@ class TestAgentManager:
                 "project_endpoint": "",
                 "model_deployment_name": "gpt-4o",
             }.get(key, default)
-            with patch("services.managers.DefaultAzureCredential"):
-                self.agent_manager = AgentManager()
+            with patch("src.services.managers.DefaultAzureCredential"):
+                self.agent_manager = AgentManager()  # pylint: disable=attribute-defined-outside-init
 
-    @patch("services.managers.config")
+    @patch("src.services.managers.config")
     def test_create_agent_success_local(self, mock_config):
         """Test successful local agent creation."""
         # Configure for local agent creation (no Azure AI Agents)
@@ -116,12 +117,9 @@ class TestAgentManager:
         assert "Test instructions" in manager.agents[agent_id]["instructions"]
         assert manager.BASE_INSTRUCTIONS in manager.agents[agent_id]["instructions"]
 
-    @patch("services.managers.config")
-    @patch("services.managers.DefaultAzureCredential")
-    @patch("services.managers.AIProjectClient")
-    def test_create_agent_success_azure(
-        self, mock_ai_client, mock_credential, mock_config
-    ):
+    @patch("src.services.managers.config")
+    @patch("src.services.managers.AIProjectClient")
+    def test_create_agent_success_azure(self, mock_ai_client, mock_config):
         """Test successful Azure agent creation."""
         # Mock configuration
         mock_config.__getitem__.side_effect = lambda key: {
@@ -198,7 +196,7 @@ class TestAgentManager:
         manager.delete_agent("nonexistent")
         assert len(manager.agents) == 0
 
-    @patch("services.managers.config")
+    @patch("src.services.managers.config")
     def test_delete_agent_local(self, mock_config):
         """Test deleting a local agent."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -212,10 +210,9 @@ class TestAgentManager:
         manager.delete_agent("test-agent")
         assert "test-agent" not in manager.agents
 
-    @patch("services.managers.config")
-    @patch("services.managers.DefaultAzureCredential")
-    @patch("services.managers.AIProjectClient")
-    def test_delete_agent_azure(self, mock_ai_client, mock_credential, mock_config):
+    @patch("src.services.managers.config")
+    @patch("src.services.managers.AIProjectClient")
+    def test_delete_agent_azure(self, mock_ai_client, mock_config):
         """Test Azure agent deletion."""
         # Mock configuration
         mock_config.__getitem__.side_effect = lambda key: {
@@ -253,6 +250,11 @@ class TestAgentManager:
         }
 
         # Delete the agent
+        agent_manager.delete_agent(agent_id)
+
+        # Verify deletion
+        assert agent_id not in agent_manager.agents
+        mock_client_instance.agents.delete_agent.assert_called_once_with(agent_id)
         agent_manager.delete_agent(agent_id)
 
         # Verify deletion

@@ -7,16 +7,17 @@
 
 import logging
 import uuid
-import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from azure.identity import DefaultAzureCredential
+import yaml
 from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential
 
-from config import config
-from services.graph_scenario_generator import GraphScenarioGenerator
+from src.config import config
+from src.services.graph_scenario_generator import GraphScenarioGenerator
+from src.services.scenario_utils import determine_scenario_directory
 
 # Constants
 ROLE_PLAY_FILE_SUFFIX = "-role-play.prompt.yml"
@@ -41,21 +42,10 @@ class ScenarioManager:
         Args:
             scenario_dir: Directory containing scenario YAML files
         """
-        self.scenario_dir = self._determine_scenario_directory(scenario_dir)
+        self.scenario_dir = determine_scenario_directory(scenario_dir)
         self.scenarios = self._load_scenarios()
         self.graph_generator = GraphScenarioGenerator()
         self.generated_scenarios: Dict[str, Any] = {}
-
-    def _determine_scenario_directory(self, scenario_dir: Optional[Path]) -> Path:
-        """Determine the correct scenario directory path."""
-        if scenario_dir is not None:
-            return scenario_dir
-
-        docker_path = Path(DOCKER_APP_PATH) / SCENARIO_DATA_DIR
-        if docker_path.exists():
-            return docker_path
-
-        return Path(__file__).parent.parent.parent.parent / "data" / "scenarios"
 
     def _load_scenarios(self) -> Dict[str, Any]:
         """
@@ -67,7 +57,7 @@ class ScenarioManager:
         scenarios: Dict[str, Any] = {}
 
         if not self.scenario_dir.exists():
-            logger.warning(f"Scenarios directory not found: {self.scenario_dir}")
+            logger.warning("Scenarios directory not found: %s", self.scenario_dir)
             return scenarios
 
         for file in self.scenario_dir.glob(f"*{ROLE_PLAY_FILE_SUFFIX}"):
@@ -75,9 +65,9 @@ class ScenarioManager:
             scenario = self._load_scenario_file(file)
             if scenario:
                 scenarios[scenario_id] = scenario
-                logger.info(f"Loaded scenario: {scenario_id}")
+                logger.info("Loaded scenario: %s", scenario_id)
 
-        logger.info(f"Total scenarios loaded: {len(scenarios)}")
+        logger.info("Total scenarios loaded: %s", len(scenarios))
         return scenarios
 
     def _extract_scenario_id(self, file: Path) -> str:
@@ -87,10 +77,10 @@ class ScenarioManager:
     def _load_scenario_file(self, file: Path) -> Optional[Dict[str, Any]]:
         """Load a single scenario file."""
         try:
-            with open(file) as f:
+            with open(file, encoding="utf-8") as f:
                 return yaml.safe_load(f)
         except Exception as e:
-            logger.error(f"Error loading scenario {file}: {e}")
+            logger.error("Error loading scenario %s: %s", file, e)
             return None
 
     def get_scenario(self, scenario_id: str) -> Optional[Dict[str, Any]]:
@@ -136,9 +126,7 @@ class ScenarioManager:
 
         return scenarios
 
-    def generate_scenario_from_graph(
-        self, graph_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def generate_scenario_from_graph(self, graph_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate a scenario based on Microsoft Graph API data.
 
@@ -192,21 +180,17 @@ CRITICAL INTERACTION GUIDELINES:
         try:
             project_endpoint = config["project_endpoint"]
             if not project_endpoint:
-                logger.warning(
-                    "PROJECT_ENDPOINT not configured - falling back to instruction-based approach"
-                )
+                logger.warning("PROJECT_ENDPOINT not configured - falling back to instruction-based approach")
                 return None
 
             client = AIProjectClient(
                 endpoint=project_endpoint,
                 credential=self.credential,
             )
-            logger.info(
-                f"AI Project client initialized with endpoint: {project_endpoint}"
-            )
+            logger.info("AI Project client initialized with endpoint: %s", project_endpoint)
             return client
         except Exception as e:
-            logger.error(f"Failed to initialize AI Project client: {e}")
+            logger.error("Failed to initialize AI Project client: %s", e)
             return None
 
     def create_agent(self, scenario_id: str, scenario_data: Dict[str, Any]) -> str:
@@ -224,9 +208,7 @@ CRITICAL INTERACTION GUIDELINES:
             Exception: If agent creation fails
         """
 
-        scenario_instructions = scenario_data.get("messages", [{}])[0].get(
-            "content", ""
-        )
+        scenario_instructions = scenario_data.get("messages", [{}])[0].get("content", "")
         combined_instructions = scenario_instructions + self.BASE_INSTRUCTIONS
 
         model_name = scenario_data.get("model", config["model_deployment_name"])
@@ -234,13 +216,8 @@ CRITICAL INTERACTION GUIDELINES:
         max_tokens = scenario_data.get("modelParameters", {}).get("max_tokens", 2000)
 
         if self.use_azure_ai_agents and self.project_client:
-            return self._create_azure_agent(
-                scenario_id, combined_instructions, model_name, temperature, max_tokens
-            )
-        else:
-            return self._create_local_agent(
-                scenario_id, combined_instructions, model_name, temperature, max_tokens
-            )
+            return self._create_azure_agent(scenario_id, combined_instructions, model_name, temperature, max_tokens)
+        return self._create_local_agent(scenario_id, combined_instructions, model_name, temperature, max_tokens)
 
     def _create_azure_agent(
         self,
@@ -269,7 +246,7 @@ CRITICAL INTERACTION GUIDELINES:
                 )
 
                 agent_id = agent.id
-                logger.info(f"Created Azure AI agent: {agent_id}")
+                logger.info("Created Azure AI agent: %s", agent_id)
 
                 self.agents[agent_id] = self._create_agent_config(
                     scenario_id=scenario_id,
@@ -284,7 +261,7 @@ CRITICAL INTERACTION GUIDELINES:
                 return agent_id
 
         except Exception as e:
-            logger.error(f"Error creating Azure agent: {e}")
+            logger.error("Error creating Azure agent: %s", e)
             raise
 
     def _create_local_agent(
@@ -309,11 +286,11 @@ CRITICAL INTERACTION GUIDELINES:
                 max_tokens=max_tokens,
             )
 
-            logger.info(f"Created local agent configuration: {agent_id}")
+            logger.info("Created local agent configuration: %s", agent_id)
             return agent_id
 
         except Exception as e:
-            logger.error(f"Error creating local agent: {e}")
+            logger.error("Error creating local agent: %s", e)
             raise
 
     def _generate_agent_name(self, scenario_id: str) -> str:
@@ -337,7 +314,7 @@ CRITICAL INTERACTION GUIDELINES:
         max_tokens: int,
     ) -> Dict[str, Any]:
         """Create standardized agent configuration."""
-        config: Dict[str, Any] = {
+        result: Dict[str, Any] = {
             "scenario_id": scenario_id,
             "is_azure_agent": is_azure_agent,
             "instructions": instructions,
@@ -348,9 +325,9 @@ CRITICAL INTERACTION GUIDELINES:
         }
 
         if is_azure_agent:
-            config["azure_agent_id"] = agent_id
+            result["azure_agent_id"] = agent_id
 
-        return config
+        return result
 
     def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -379,11 +356,11 @@ CRITICAL INTERACTION GUIDELINES:
                     try:
                         with self.project_client:
                             self.project_client.agents.delete_agent(agent_id)
-                            logger.info(f"Deleted Azure AI agent: {agent_id}")
+                            logger.info("Deleted Azure AI agent: %s", agent_id)
                     except Exception as e:
-                        logger.error(f"Error deleting Azure agent: {e}")
+                        logger.error("Error deleting Azure agent: %s", e)
 
                 del self.agents[agent_id]
-                logger.info(f"Deleted agent from local storage: {agent_id}")
+                logger.info("Deleted agent from local storage: %s", agent_id)
         except Exception as e:
-            logger.error(f"Error deleting agent {agent_id}: {e}")
+            logger.error("Error deleting agent %s: %s", agent_id, e)

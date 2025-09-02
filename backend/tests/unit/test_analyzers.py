@@ -1,14 +1,15 @@
 """Tests for analyzer classes."""
 
-import pytest
-from unittest.mock import Mock, patch
-import tempfile
-import yaml
-from pathlib import Path
-import json
 import base64
+import json
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-from services.analyzers import ConversationAnalyzer, PronunciationAssessor
+import pytest
+import yaml
+
+from src.services.analyzers import ConversationAnalyzer, PronunciationAssessor
 
 
 class TestConversationAnalyzer:
@@ -33,14 +34,14 @@ class TestConversationAnalyzer:
             }
 
             scenario_file = scenario_dir / "test-scenario-evaluation.prompt.yml"
-            with open(scenario_file, "w") as f:
+            with open(scenario_file, "w", encoding="utf-8") as f:
                 yaml.safe_dump(scenario_data, f)
 
             analyzer = ConversationAnalyzer(scenario_dir=scenario_dir)
             assert len(analyzer.evaluation_scenarios) == 1
             assert "test-scenario" in analyzer.evaluation_scenarios
 
-    @patch("services.analyzers.config")
+    @patch("src.services.analyzers.config")
     def test_initialize_openai_client_missing_config(self, mock_config):
         """Test OpenAI client initialization with missing config."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -51,8 +52,8 @@ class TestConversationAnalyzer:
         analyzer = ConversationAnalyzer()
         assert analyzer.openai_client is None
 
-    @patch("services.analyzers.AzureOpenAI")
-    @patch("services.analyzers.config")
+    @patch("src.services.analyzers.AzureOpenAI")
+    @patch("src.services.analyzers.config")
     def test_initialize_openai_client_success(self, mock_config, mock_azure_openai):
         """Test successful OpenAI client initialization."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -140,12 +141,13 @@ class TestConversationAnalyzer:
         assert messages[1]["content"] == prompt
         assert "expert sales conversation evaluator" in messages[0]["content"]
 
+    # pylint: disable=R0801
     def test_analyze_conversation_with_openai_client(self):
         """Test analyzing conversation with mocked OpenAI client."""
         analyzer = ConversationAnalyzer()
 
         # Mock OpenAI client and configuration
-        with patch("services.analyzers.config") as mock_config:
+        with patch("src.services.analyzers.config") as mock_config:
             mock_config.__getitem__.side_effect = lambda key: {
                 "azure_openai_endpoint": "https://test.openai.azure.com",
                 "azure_openai_api_key": "test-key",
@@ -175,13 +177,14 @@ class TestConversationAnalyzer:
             analyzer.openai_client = mock_client
 
             # Mock scenario
-            analyzer.evaluation_scenarios = {
-                "test-scenario": {"messages": [{"content": "Test scenario content"}]}
-            }
+            analyzer.evaluation_scenarios = {"test-scenario": {"messages": [{"content": "Test scenario content"}]}}
 
             # Test that the method exists and can be called
             # Due to complexity of async mocking, we just verify the client is set
             assert analyzer.openai_client is not None
+
+
+# pylint: enable=R0801
 
 
 class TestPronunciationAssessor:
@@ -246,7 +249,7 @@ class TestPronunciationAssessor:
         mock_result.properties.get.return_value = "{}"
 
         words = assessor._extract_word_details(mock_result)
-        assert words == []
+        assert not words
 
     def test_extract_word_details_with_words(self):
         """Test extracting word details with actual words."""
@@ -330,7 +333,7 @@ class TestPronunciationAssessor:
 
         words = assessor._extract_word_details(mock_result)
 
-        assert words == []
+        assert not words
 
     def test_assess_pronunciation_with_valid_audio(self):
         """Test pronunciation assessment with valid audio data setup."""

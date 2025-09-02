@@ -2,13 +2,13 @@
 
 from unittest.mock import Mock, patch
 
-from services.graph_scenario_generator import GraphScenarioGenerator
+from src.services.graph_scenario_generator import GraphScenarioGenerator
 
 
 class TestGraphScenarioGenerator:
     """Test cases for GraphScenarioGenerator."""
 
-    @patch("services.graph_scenario_generator.config")
+    @patch("src.services.graph_scenario_generator.config")
     def test_initialization_missing_config(self, mock_config):
         """Test initialization with missing OpenAI configuration."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -19,8 +19,8 @@ class TestGraphScenarioGenerator:
         generator = GraphScenarioGenerator()
         assert generator.openai_client is None
 
-    @patch("services.graph_scenario_generator.AzureOpenAI")
-    @patch("services.graph_scenario_generator.config")
+    @patch("src.services.graph_scenario_generator.AzureOpenAI")
+    @patch("src.services.graph_scenario_generator.config")
     def test_initialization_success(self, mock_config, mock_azure_openai):
         """Test successful initialization with proper config."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -33,7 +33,7 @@ class TestGraphScenarioGenerator:
         assert generator.openai_client is not None
         mock_azure_openai.assert_called_once()
 
-    @patch("services.graph_scenario_generator.config")
+    @patch("src.services.graph_scenario_generator.config")
     def test_initialization_exception(self, mock_config):
         """Test initialization with configuration exception."""
         mock_config.__getitem__.side_effect = Exception("Config error")
@@ -41,7 +41,7 @@ class TestGraphScenarioGenerator:
         generator = GraphScenarioGenerator()
         assert generator.openai_client is None
 
-    @patch("services.graph_scenario_generator.config")
+    @patch("src.services.graph_scenario_generator.config")
     def test_generate_scenario_from_graph_empty_data(self, mock_config):
         """Test scenario generation with empty graph data."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -58,7 +58,7 @@ class TestGraphScenarioGenerator:
 
     def test_generate_scenario_from_graph_with_meetings(self):
         """Test scenario generation with meeting data."""
-        with patch("services.graph_scenario_generator.config") as mock_config:
+        with patch("src.services.graph_scenario_generator.config") as mock_config:
             mock_config.__getitem__.side_effect = lambda key: {
                 "model_deployment_name": "gpt-4",
             }.get(key, "test-value")
@@ -108,9 +108,7 @@ class TestGraphScenarioGenerator:
         ]
 
         result = generator._format_meeting_list(meetings)
-        expected = (
-            "- Team Standup with Alice, Bob\n" "- Client Call with Charlie, Diana, Eve"
-        )
+        expected = "- Team Standup with Alice, Bob\n" + "- Client Call with Charlie, Diana, Eve"
         assert result == expected
 
     def test_create_graph_scenario_content_no_meetings(self):
@@ -134,7 +132,8 @@ class TestGraphScenarioGenerator:
         assert "Jordan Martinez" in result
         assert "TechCorp Solutions" in result
 
-    @patch("services.graph_scenario_generator.config")
+    # pylint: disable=R0801
+    @patch("src.services.graph_scenario_generator.config")
     def test_create_graph_scenario_content_with_openai(self, mock_config):
         """Test scenario content creation with OpenAI client."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -157,7 +156,9 @@ class TestGraphScenarioGenerator:
         assert result == "Generated scenario content"
         mock_client.chat.completions.create.assert_called_once()
 
-    @patch("services.graph_scenario_generator.config")
+    # pylint: enable=R0801
+
+    @patch("src.services.graph_scenario_generator.config")
     def test_create_graph_scenario_content_openai_none_response(self, mock_config):
         """Test scenario content creation when OpenAI returns None content."""
         mock_config.__getitem__.side_effect = lambda key: {
@@ -208,7 +209,7 @@ class TestGraphScenarioGenerator:
 
     def test_generate_scenario_truncated_description(self):
         """Test scenario generation with long description that gets truncated."""
-        with patch("services.graph_scenario_generator.config") as mock_config:
+        with patch("src.services.graph_scenario_generator.config") as mock_config:
             mock_config.__getitem__.side_effect = lambda key: {
                 "model_deployment_name": "gpt-4",
             }.get(key, "test-value")
@@ -219,8 +220,8 @@ class TestGraphScenarioGenerator:
 
             # Patch the fallback method to return long content
             long_content = (
-                "This is a very long scenario description that should be truncated because it exceeds the 100 character limit set in the code. "
-                * 3
+                "This is a very long scenario description that should be truncated because it exceeds the 100 "
+                "character limit set in the code. " * 3
             )
             generator._get_fallback_scenario_content = lambda: long_content
 
@@ -232,25 +233,19 @@ class TestGraphScenarioGenerator:
 
     def test_generate_scenario_multiple_meetings_limit(self):
         """Test scenario generation limits meetings to first 3."""
-        with patch("services.graph_scenario_generator.config") as mock_config:
+        with patch("src.services.graph_scenario_generator.config") as mock_config:
             mock_config.__getitem__.side_effect = lambda key: {
                 "model_deployment_name": "gpt-4",
             }.get(key, "test-value")
 
             # Create graph data with more than 3 meetings
-            graph_data = {
-                "value": [
-                    {"subject": f"Meeting {i}", "attendees": []} for i in range(5)
-                ]
-            }
+            graph_data = {"value": [{"subject": f"Meeting {i}", "attendees": []} for i in range(5)]}
 
             generator = GraphScenarioGenerator()
 
             # Test the generate_scenario_from_graph method which processes meetings
             # We can test this by mocking the _create_graph_scenario_content method
-            with patch.object(
-                generator, "_create_graph_scenario_content"
-            ) as mock_create:
+            with patch.object(generator, "_create_graph_scenario_content") as mock_create:
                 mock_create.return_value = "Test scenario content"
 
                 generator.generate_scenario_from_graph(graph_data)
@@ -265,7 +260,7 @@ class TestGraphScenarioGenerator:
 
     def test_generate_scenario_attendees_limit(self):
         """Test scenario generation limits attendees to first 3 per meeting."""
-        with patch("services.graph_scenario_generator.config") as mock_config:
+        with patch("src.services.graph_scenario_generator.config") as mock_config:
             mock_config.__getitem__.side_effect = lambda key: {
                 "model_deployment_name": "gpt-4",
             }.get(key, "test-value")
@@ -275,9 +270,7 @@ class TestGraphScenarioGenerator:
                 "value": [
                     {
                         "subject": "Big Meeting",
-                        "attendees": [
-                            {"emailAddress": {"name": f"Person {i}"}} for i in range(5)
-                        ],
+                        "attendees": [{"emailAddress": {"name": f"Person {i}"}} for i in range(5)],
                     }
                 ]
             }
@@ -285,9 +278,7 @@ class TestGraphScenarioGenerator:
             generator = GraphScenarioGenerator()
 
             # Test by mocking the _create_graph_scenario_content method
-            with patch.object(
-                generator, "_create_graph_scenario_content"
-            ) as mock_create:
+            with patch.object(generator, "_create_graph_scenario_content") as mock_create:
                 mock_create.return_value = "Test scenario content"
 
                 generator.generate_scenario_from_graph(graph_data)
