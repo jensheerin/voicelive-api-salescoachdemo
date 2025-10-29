@@ -86,5 +86,7 @@
     "python.testing.unittestEnabled": false,
     "python.experiments.optOutFrom": [
         "pythonTerminalEnvVarActivation"
-    ]
+    ],
+    "chat.checkpoints.showFileChanges": true,
+    "chat.tools.terminal.outputLocation": "terminal"
 }

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Test Page - Server is Working!</h1>
+    <p>If you see this, the .NET server is serving static files correctly.</p>
+    <script>
+        console.log('Test page loaded successfully');
+        fetch('/api/config')
+            .then(r => r.json())
+            .then(data => {
+                console.log('API Response:', data);
+                document.body.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(err => console.error('API Error:', err));
+    </script>
+</body>
+</html>
